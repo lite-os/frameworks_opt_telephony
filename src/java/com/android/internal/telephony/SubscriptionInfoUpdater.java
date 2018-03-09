@@ -118,8 +118,6 @@ public class SubscriptionInfoUpdater extends Handler {
     // The current foreground user ID.
     private int mCurrentlyActiveUserId;
     private CarrierServiceBindHelper mCarrierServiceBindHelper;
-    private boolean mIsShutdown;
-    private int mCurrentSimCount;
 
     public SubscriptionInfoUpdater(
             Looper looper, Context context, Phone[] phone, CommandsInterface[] ci) {
@@ -131,10 +129,9 @@ public class SubscriptionInfoUpdater extends Handler {
         mSubscriptionManager = SubscriptionManager.from(mContext);
         mEuiccManager = (EuiccManager) mContext.getSystemService(Context.EUICC_SERVICE);
         mPackageManager = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
+
         IntentFilter intentFilter = new IntentFilter(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
         intentFilter.addAction(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
-        mIsShutdown = false;
-        intentFilter.addAction(Intent.ACTION_SHUTDOWN);
         mContext.registerReceiver(sReceiver, intentFilter);
 
         mCarrierServiceBindHelper = new CarrierServiceBindHelper(mContext);
@@ -184,11 +181,6 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("[Receiver]+");
             String action = intent.getAction();
             logd("Action: " + action);
-
-            if (action.equals(Intent.ACTION_SHUTDOWN)) {
-                mIsShutdown = true;
-                return;
-            }
 
             if (!action.equals(TelephonyIntents.ACTION_SIM_STATE_CHANGED) &&
                     !action.equals(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED)) {
@@ -707,19 +699,9 @@ public class SubscriptionInfoUpdater extends Handler {
             }
         }
 
-        mCurrentSimCount = insertedSimCount;
-
-        if (!mIsShutdown && insertedSimCount == 1) {
-            SubscriptionInfo sir = subInfos.get(0);
-            int subId = sir.getSubscriptionId();
-            mSubscriptionManager.setDefaultDataSubId(subId);
-            mSubscriptionManager.setDefaultVoiceSubId(subId);
-            mSubscriptionManager.setDefaultSmsSubId(subId);
-        } else {
-            // Ensure the modems are mapped correctly
-            mSubscriptionManager.setDefaultDataSubId(
-                    mSubscriptionManager.getDefaultDataSubscriptionId());
-        }
+        // Ensure the modems are mapped correctly
+        mSubscriptionManager.setDefaultDataSubId(
+                mSubscriptionManager.getDefaultDataSubscriptionId());
 
         // No need to check return value here as we notify for the above changes anyway.
         updateEmbeddedSubscriptions();
@@ -839,10 +821,6 @@ public class SubscriptionInfoUpdater extends Handler {
             }
         }
         return -1;
-    }
-
-    protected int getInsertedSimCount() {
-        return mCurrentSimCount;
     }
 
     private boolean isNewSim(String iccId, String[] oldIccId) {

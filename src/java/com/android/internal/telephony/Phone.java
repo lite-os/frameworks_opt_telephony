@@ -3477,9 +3477,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     public void unregisterForDataEnabledChanged(Handler h) {
-        if (mDcTracker != null) {
-            mDcTracker.unregisterForDataEnabledChanged(h);
-        }
+        mDcTracker.unregisterForDataEnabledChanged(h);
     }
 
     public IccSmsInterfaceManager getIccSmsInterfaceManager(){
